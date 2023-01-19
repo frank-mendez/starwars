@@ -1,0 +1,134 @@
+import { CircularProgress, Grid, TextField, Typography } from '@mui/material'
+import React, { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import {
+  fetchVehicles,
+  fetchVehiclesDirect,
+  fetchVehicleSearch,
+} from '../../../actions/vehicleAction'
+import { makeStyles } from '@mui/styles'
+import ResponsiveCardGrid from '../../Common/ResponsiveCardGrid'
+import LoadingButton from '@mui/lab/LoadingButton'
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
+import { namedRequestsInProgress } from '../../../actions/requestSelector'
+import { requestEnum } from '../../../enums/requestEnum'
+
+const useStyles = makeStyles({
+  vehicle: {
+    paddingBottom: '10rem',
+    marginTop: '3rem',
+  },
+  loading: {
+    marginBottom: '3rem',
+  },
+})
+
+const Vehicle = () => {
+  const dispatch = useDispatch()
+  const classes = useStyles()
+
+  const vehicles = useSelector((state) => state.vehicles.vehicles)
+  const vehicleResult = useSelector((state) => state.vehicles.vehicleResult)
+  const requests = useSelector((state) => state.requests.requests)
+
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchVehiclesLoading = namedRequestsInProgress(requests, [
+      requestEnum.fetchVehicles,
+      requestEnum.fetchVehiclesDirect,
+      requestEnum.fetchVehicleSearch,
+    ])
+    setLoading(fetchVehiclesLoading)
+  }, [requests])
+
+  useEffect(() => {
+    dispatch(fetchVehicles())
+  }, [dispatch])
+
+  const { next } = vehicleResult
+
+  const handleSearch = (e) => {
+    dispatch(fetchVehicleSearch(e.target.value))
+  }
+
+  useEffect(() => {
+    window.onscroll = function (ev) {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight) {
+        if (next) {
+          dispatch(fetchVehiclesDirect(next))
+        }
+      }
+    }
+  }, [vehicleResult, dispatch, next])
+
+  const handleScrollDown = () => {
+    dispatch(fetchVehiclesDirect(next))
+    window.scrollTo(0, document.body.scrollHeight)
+  }
+
+  return (
+    <div className={classes.vehicle}>
+      {vehicles.length || vehicles.length === 0 ? (
+        <Grid container justifyContent="flex-end">
+          <TextField onChange={handleSearch} label="Search" />
+        </Grid>
+      ) : null}
+      <Grid sx={{ marginTop: 5, marginBottom: 10 }} container spacing={2}>
+        {vehicles.length
+          ? vehicles.map((result, index) => (
+              <ResponsiveCardGrid
+                key={index}
+                index={index}
+                result={result}
+                url={'vehicles'}
+              />
+            ))
+          : null}
+      </Grid>
+      {loading && (
+        <Grid
+          className={classes.loading}
+          container
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Grid item>
+            <CircularProgress />
+          </Grid>
+        </Grid>
+      )}
+      {vehicles.length && next ? (
+        <Grid container justifyContent="center" alignItems="center">
+          <Grid item>
+            <LoadingButton
+              onClick={handleScrollDown}
+              loading={loading}
+              loadingIndicator="Loading..."
+              variant="outlined"
+              startIcon={<ArrowDownwardIcon />}
+            >
+              Scroll down to load more vehicles
+            </LoadingButton>
+          </Grid>
+        </Grid>
+      ) : null}
+      {vehicles.length && !next ? (
+        <Grid container justifyContent="center" alignItems="center">
+          <Grid item>
+            <Typography>All Done</Typography>
+          </Grid>
+        </Grid>
+      ) : null}
+      {vehicles.length === 0 && !loading ? (
+        <Grid container justifyContent="center" alignItems="center">
+          <Grid item>
+            <Typography>No Results Found</Typography>
+          </Grid>
+        </Grid>
+      ) : null}
+    </div>
+  )
+}
+
+export default Vehicle
